@@ -41,23 +41,6 @@ int main (int argc, char *argv[]) {
     int arrivalTime;
     int burstTime;
     int priority;
-    /*
-    char data[256];
-    char *pch;
-    dataIn.getline(data, 256, '\n');
-    pch = strtok(data, " ");
-    id = atoi(pch);
-    cout << "id = " << id << endl;
-    pch = strtok(nullptr, " ");
-    arrivalTime = atoi(pch);
-    cout << "at = " << arrivalTime << endl;
-    pch = strtok(nullptr, " ");
-    burstTime = atoi(pch);
-    cout << "bt = " << burstTime << endl;
-    pch = strtok(nullptr, " ");
-    priority = atoi(pch);
-    cout << "pr = " << priority << endl;
-    */
     
     dataIn >> id;
     if (queue.tail() != nullptr && id == queue.tail()->pid()) {
@@ -87,6 +70,12 @@ int main (int argc, char *argv[]) {
 
   switch(atoi(argv[3])) {
   case 0: {
+    float avgBurst = 0.0;
+    float avgWait = 0.0;
+    float avgTurnAround = 0.0;
+    float avgResponseTime = 0.0;
+    int   numOfContextSwitch = 0;
+    int   numOfProcesses = 0;
     dataOut.open(argv[2], std::ios::app);
     dataOut << "*****************************************************************************************************************************" << endl;
     dataOut << "************************************************* Scheduling algorithm: FCFS ************************************************" << endl;
@@ -123,14 +112,35 @@ int main (int argc, char *argv[]) {
         temp->setTurnAroundTime(temp->waitTime() + temp->burstTime());
         temp->setResponseTime(temp->waitTime());
         dataOut.open(argv[2], std::ios::app);
-        dataOut << *temp << "  |\n"; 
-        dataOut.close();
-        completedQueue.enqueue(temp);
+        dataOut << *temp << "  |\n";
+        dataOut.close(); 
+        p = completedQueue.dequeue();
+        ++numOfProcesses;
+        avgBurst += temp->burstTime();
+        avgWait += temp->waitTime();
+        avgTurnAround += temp->turnAroundTime();
+        avgResponseTime += temp->responseTime();
+        numOfContextSwitch += temp->contextSwitchCount();
+        delete temp;
       }
     }
+    dataOut.open(argv[2], std::ios::app);
+    dataOut << "Average CPU burst time = " << (avgBurst / numOfProcesses) << "ms" << endl;
+    dataOut << "Average waiting time = " << (avgWait / numOfProcesses) << "ms" << endl;
+    dataOut << "Average turn around time = " << (avgTurnAround / numOfProcesses) << "ms" << endl;
+    dataOut << "Average response time = " << (avgResponseTime / numOfProcesses) << "ms" << endl;
+    dataOut << "No. of context switches performmed = " << numOfContextSwitch << endl;
+    dataOut.close();
+
     break;
   }
   case 1: {
+    float avgBurst = 0.0;
+    float avgWait = 0.0;
+    float avgTurnAround = 0.0;
+    float avgResponseTime = 0.0;
+    int   numOfContextSwitch = 0;
+    int   numOfProcesses = 0;
     dataOut.open(argv[2], std::ios::app);
     dataOut << "*****************************************************************************************************************************" << endl;
     dataOut << "************************************************* Scheduling algorithm: SRTF ************************************************" << endl;
@@ -175,34 +185,175 @@ int main (int argc, char *argv[]) {
         dataOut.open(argv[2], std::ios::app);
         dataOut << *temp << "  |\n"; 
         dataOut.close();
-        completedQueue.enqueue(temp);
+        ++numOfProcesses;
+        avgBurst += temp->burstTime();
+        avgWait += temp->waitTime();
+        avgTurnAround += temp->turnAroundTime();
+        avgResponseTime += temp->responseTime();
+        numOfContextSwitch += temp->contextSwitchCount();
+        delete temp;
       }
       pcb.print();
     }
 
+    dataOut.open(argv[2], std::ios::app);
+    dataOut << "Average CPU burst time = " << (avgBurst / numOfProcesses) << "ms" << endl;
+    dataOut << "Average waiting time = " << (avgWait / numOfProcesses) << "ms" << endl;
+    dataOut << "Average turn around time = " << (avgTurnAround / numOfProcesses) << "ms" << endl;
+    dataOut << "Average response time = " << (avgResponseTime / numOfProcesses) << "ms" << endl;
+    dataOut << "No. of context switches performmed = " << numOfContextSwitch << endl;
+    dataOut.close();
     break;
   }
-  case 2:
+  case 2: {
     if (argc != 5) {
       fprintf(stderr, "A time quantum must be included to use the round robin scheduling algorithm");
       exit(1);
     }
+    float avgBurst = 0.0;
+    float avgWait = 0.0;
+    float avgTurnAround = 0.0;
+    float avgResponseTime = 0.0;
+    int   numOfContextSwitch = 0;
+    int   numOfProcesses = 0;
     dataOut.open(argv[2], std::ios::app);
     dataOut << "*****************************************************************************************************************************" << endl;
-    dataOut << "******************************************* Scheduling algorithm: Round Robin ************************************************" << endl;
+    dataOut << "****************************************** Scheduling algorithm: Round Robin ************************************************" << endl;
     dataOut << "******************************************* ( No. of tasks = " << queue.processCount() << "  Quantum = " << atoi(argv[4]) << ") ************************************************" << endl;
     dataOut << "*****************************************************************************************************************************" << endl;
     dataOut << "|  pid  |  arrival  |  CPU-burst  |  Priority  |  Finish  |  Wait Time  |  Turnaround  |  Response Time  |  No. of Context  |\n"; 
     dataOut.close();
+
+    Process* p = queue.head();
+
+    int timeSinceContextSwitch = 0;
+    while (p != nullptr || pcb.processCount() != 0) {
+      cout << "~~~~~~~~~~~~~~~~~~~PCB TIME " << pcb.timeCounter() << "~~~~~~~~~~~~~~~~~~~~" << endl; 
+      cout << "get queue.head()" << endl;
+      p = queue.head();
+      cout << "pre queue management" << endl;
+      cout << "pcb time - " << pcb.timeCounter() << endl;
+      if (p != nullptr) {
+        if (pcb.timeCounter() >= p->arrivalTime()) {
+          p = queue.dequeue();
+          p->print();
+          pcb.enqueue(p);
+          pcb.print();
+        }
+      }
+      cout << "post queue management" << endl;
+      cout << p << endl;
+      cout << pcb.processCount() << endl << endl;
+      
+      pcb.print();
+
+      pcb.RR(atoi(argv[4]), timeSinceContextSwitch);
+
+      ++timeSinceContextSwitch;
+      if (pcb.processListHead()->remainingTime() == 0) {
+        cout << "process count == process burst time" << endl;
+        Process* temp = pcb.dequeue();
+        temp->print();
+        temp->setFinishTime(pcb.timeCounter());
+        temp->setWaitTime(pcb.timeCounter() - temp->arrivalTime() - temp->burstTime());
+        temp->setTurnAroundTime(pcb.timeCounter() - temp->arrivalTime());
+        temp->setResponseTime(temp->waitTime() - temp->arrivalTime());
+        dataOut.open(argv[2], std::ios::app);
+        dataOut << *temp << "  |\n"; 
+        dataOut.close();
+        ++numOfProcesses;
+        avgBurst += temp->burstTime();
+        avgWait += temp->waitTime();
+        avgTurnAround += temp->turnAroundTime();
+        avgResponseTime += temp->responseTime();
+        numOfContextSwitch += temp->contextSwitchCount();
+        timeSinceContextSwitch = 0;
+      }
+      pcb.print();
+      cout << "tscs = " << timeSinceContextSwitch << endl;
+      if (atoi(argv[4]) == timeSinceContextSwitch) {
+        timeSinceContextSwitch = 0;
+      }
+    }
+    dataOut.open(argv[2], std::ios::app);
+    dataOut << "Average CPU burst time = " << (avgBurst / numOfProcesses) << "ms" << endl;
+    dataOut << "Average waiting time = " << (avgWait / numOfProcesses) << "ms" << endl;
+    dataOut << "Average turn around time = " << (avgTurnAround / numOfProcesses) << "ms" << endl;
+    dataOut << "Average response time = " << (avgResponseTime / numOfProcesses) << "ms" << endl;
+    dataOut << "No. of context switches performmed = " << numOfContextSwitch << endl;
+    dataOut.close();
     break;
-  case 3:
-    // Preemptive Priority
+  }
+  case 3: {
+    float avgBurst = 0.0;
+    float avgWait = 0.0;
+    float avgTurnAround = 0.0;
+    float avgResponseTime = 0.0;
+    int   numOfContextSwitch = 0;
+    int   numOfProcesses = 0;    
+    dataOut.open(argv[2], std::ios::app);
+    dataOut << "*****************************************************************************************************************************" << endl;
+    dataOut << "**************************************** Scheduling algorithm: Preemptive Priority ******************************************" << endl;
+    dataOut << "*****************************************************************************************************************************" << endl;
+    dataOut << "|  pid  |  arrival  |  CPU-burst  |  Priority  |  Finish  |  Wait Time  |  Turnaround  |  Response Time  |  No. of Context  |\n"; 
+    dataOut.close();
+    Process* p = queue.head();
+
+    while (p != nullptr || pcb.processCount() != 0) {
+      cout << "~~~~~~~~~~~~~~~~~~~PCB TIME " << pcb.timeCounter() << "~~~~~~~~~~~~~~~~~~~~" << endl; 
+      cout << "get queue.head()" << endl;
+      p = queue.head();
+      cout << "pre queue management" << endl;
+      cout << "pcb time - " << pcb.timeCounter() << endl;
+      if (p != nullptr) {
+        if (pcb.timeCounter() >= p->arrivalTime()) {
+          p = queue.dequeue();
+          p->print();
+          pcb.PPEnqueue(p);
+          cout << "PPENQUEUE COMPLETE" << endl;
+          pcb.print();
+        }
+      }
+      cout << "post queue management" << endl;
+      cout << p << endl;
+      cout << pcb.processCount() << endl << endl;
+      
+      pcb.print();
+
+      pcb.PP();
+
+      if (pcb.processListHead()->remainingTime() == 0) {
+        cout << "process count == process burst time" << endl;
+        Process* temp = pcb.dequeue();
+        temp->print();
+        temp->setFinishTime(pcb.timeCounter());
+        temp->setWaitTime(pcb.timeCounter() - temp->arrivalTime() - temp->burstTime());
+        temp->setTurnAroundTime(pcb.timeCounter() - temp->burstTime() - temp->arrivalTime());
+        dataOut.open(argv[2], std::ios::app);
+        dataOut << *temp << "  |\n"; 
+        dataOut.close();
+        ++numOfProcesses;
+        avgBurst += temp->burstTime();
+        avgWait += temp->waitTime();
+        avgTurnAround += temp->turnAroundTime();
+        avgResponseTime += temp->responseTime();
+        numOfContextSwitch += temp->contextSwitchCount();
+        delete temp;
+      }
+      pcb.print();
+    }
+    dataOut.open(argv[2], std::ios::app);
+    dataOut << "Average CPU burst time = " << (avgBurst / numOfProcesses) << "ms" << endl;
+    dataOut << "Average waiting time = " << (avgWait / numOfProcesses) << "ms" << endl;
+    dataOut << "Average turn around time = " << (avgTurnAround / numOfProcesses) << "ms" << endl;
+    dataOut << "Average response time = " << (avgResponseTime / numOfProcesses) << "ms" << endl;
+    dataOut << "No. of context switches performmed = " << numOfContextSwitch << endl;
+    dataOut.close();
     break;
+  }
   default:
     fprintf(stderr, "%d must be between 0 and 3\n", atoi(argv[3]));
     exit(1);
   }
-
-  // printf("Total execution time is %fms", ((float)t)/CLOCKS_PER_SEC);
   return 0;
 }

@@ -161,3 +161,84 @@ void PCB::fixSRTFQueue() {
    processListHead_->setResponseTime(this->timeCounter_ - processListHead_->arrivalTime());
 }
 
+void PCB::RR(int timeQuantum, int timeSinceContextSwitch) {
+  ++timeCounter_;
+  ++timeSinceContextSwitch;
+  processListHead_->setRemainingTime((processListHead_->remainingTime()) - 1);
+  if (timeQuantum == timeSinceContextSwitch) {
+    timeCounter_ += 0.5;
+    if (processListHead_->contextSwitchCount() == 0) {
+      processListHead_->setResponseTime(timeCounter_);
+    }
+    processListHead_->setContextSwitchCount(processListHead_->contextSwitchCount() + 1);
+    processListHead_ = processListHead_->next();
+    processListTail_ = processListTail_->next();
+  }
+}
+
+void PCB::PP() {
+  ++timeCounter_;
+  processListHead_->setRemainingTime((processListHead_->remainingTime()) - 1);
+}
+
+void PCB::PPEnqueue(Process* p) {
+  cout << "PPENQUEUE START" << endl;
+  p->print();
+  if (processCount_ == 0) {
+    processListHead_ = p;
+    processListCurr_ = p;
+    processListTail_ = p;
+    ++processCount_;
+    return;
+  }
+  Process* curr = processListHead_;
+  Process* next = processListHead_->next();
+  if(next == nullptr) {
+    if (p->priority() < curr->priority()) {
+      timeCounter_ += 0.5;
+      processListHead_->setContextSwitchCount(processListHead_->contextSwitchCount() + 1);
+      processListHead_ = processListHead_->next();
+      processListCurr_ = processListHead_;
+      p->setNext(processListHead_);
+      processListTail_->setNext(p);
+    } else {
+      processListHead_->setNext(p);
+      processListCurr_->setNext(p);
+      processListTail_->setNext(p);
+      processListTail_ = p;
+      processListTail_->setNext(processListHead_);
+    }
+    ++processCount_;
+    return;
+  }
+
+  cout << "p = " << p->priority() << endl;
+  cout << "curr = " << curr->priority() << endl;
+  while (curr != processListTail_) {
+    cout << "curr = " << curr << endl;
+    cout << "tail = " << processListTail_ << endl;
+    cout << "curr < p " << curr->priority() << " < " << p->priority() << endl;
+    if (p->priority() < curr->priority()) {
+      if (curr == processListHead_) {
+        timeCounter_ += 0.5;
+      }
+      processListHead_->setContextSwitchCount(processListHead_->contextSwitchCount() + 1);
+      p->setNext(processListHead_);
+      processListHead_ = p;
+      processListTail_->setNext(p);
+      break;
+    } else {
+      curr = curr->next();
+      next = next->next();
+      cout << "p >= curr" << endl;
+      cout << "curr = " << curr << endl;
+      cout << "tail = " << processListTail_ << endl;
+      if (curr == processListTail_) {
+        processListTail_->setNext(p);
+        processListTail_ = p;
+        processListTail_->setNext(processListHead_);
+      }
+    }
+  }
+  ++processCount_;
+}

@@ -44,8 +44,9 @@ class PCB {
     void FCFS();
     void SRTF();
     void fixSRTFQueue();
-    void RR(int timeQuantum);
+    void RR(int timeQuantum, int timeSinceContextSwitch);
     void PP();
+    void PPEnqueue(Process* p);
 };
 
 

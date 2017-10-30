@@ -29,3 +29,9 @@ test4: ucd-csci3453-lab2
 
 test41: ucd-csci3453-lab2
 			./ucd-csci3453-lab2 input4 output4 1
+
+test42: ucd-csci3453-lab2
+			./ucd-csci3453-lab2 input4 output4 2 4
+
+test43: ucd-csci3453-lab2
+			./ucd-csci3453-lab2 input4 output4 3
